@@ -1,0 +1,20 @@
+{
+  "name": "Mahjong — Ruhig & Klar",
+  "short_name": "Mahjong",
+  "description": "Mahjong-Solitaire mit einzigartigen Symbolen. Ruhig, augenfreundlich, einfach zu bedienen.",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4ede0",
+  "theme_color": "#3b6e5a",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
