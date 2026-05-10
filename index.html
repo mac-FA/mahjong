@@ -171,7 +171,21 @@
     text-align: center;
     z-index: 1;
     line-height: 1;
+    display: flex; align-items: center; justify-content: center;
   }
+  .tile .face.kanji {
+    font-family: "Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Source Han Serif", serif;
+    font-weight: 800;
+    color: #2b2519;
+  }
+  .tile .face.kanji.ink-red { color: #b03a2e; }
+  [data-theme="dark"] .tile .face.kanji        { color: #1c1812; }
+  [data-theme="dark"] .tile .face.kanji.ink-red{ color: #8a2a20; }
+  .tile .face.svg {
+    width: calc(var(--tw, 48px) * 0.78);
+    height: calc(var(--tw, 48px) * 0.78);
+  }
+  .tile .face.svg svg { width: 100%; height: 100%; display: block; }
   .tile.blocked { cursor: default; }
   .tile.blocked .face { opacity: 0.55; filter: saturate(0.7); }
   .tile.blocked { background: linear-gradient(160deg, #efe6cf, #c8b88c); }
@@ -404,6 +418,14 @@
     <div class="row"><label>Mögliche Paare zählen</label><button class="toggle" data-set="showFree" aria-pressed="true"></button></div>
     <div class="row"><label>Verfügbare Steine markieren</label><button class="toggle" data-set="highlightFree" aria-pressed="false"></button></div>
     <div class="row"><label>Leichte Vibration (Mobil)</label><button class="toggle" data-set="vibrate" aria-pressed="false"></button></div>
+    <h3>Bildwelt <small style="font-weight:400;color:var(--ink-soft);text-transform:none;letter-spacing:0;">(beim nächsten Spiel aktiv)</small></h3>
+    <div class="opt-grid">
+      <button data-iconset="emoji"><span class="opt-title">Emoji</span><span class="opt-desc">Bunte Bilder</span></button>
+      <button data-iconset="kanji"><span class="opt-title">Kanji</span><span class="opt-desc">Schriftzeichen</span></button>
+      <button data-iconset="alchemy"><span class="opt-title">Tierkreis</span><span class="opt-desc">Astrologie & Alchemie</span></button>
+      <button data-iconset="mandala"><span class="opt-title">Mandalas</span><span class="opt-desc">Geometrische Muster</span></button>
+      <button data-iconset="stars"><span class="opt-title">Sternbilder</span><span class="opt-desc">Konstellationen</span></button>
+    </div>
     <h3>Stein-Größe</h3>
     <div class="opt-grid">
       <button data-size="s"><span class="opt-title">Klein</span><span class="opt-desc">Mehr Übersicht</span></button>
@@ -460,22 +482,156 @@ const shuffle = (a) => {
   return a;
 };
 
-/* ---------- 72 einzigartige Symbole ---------- */
-const SYMBOLS = [
-  // Tiere (24)
+/* ---------- Bildwelten / Icon-Sets ----------
+   Jedes Set liefert ≥ 48 einzigartige Motive (genug für das größte
+   Brett "Schildkröte" mit 48 Paaren). Symbol-IDs sind Indizes in
+   das jeweilige Set; gleiche ID = gleiches Paar. */
+
+const EMOJI = [
   '🐱','🐶','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵',
   '🐰','🐹','🦋','🐝','🐞','🐠','🐬','🐧','🦉','🦜','🐢','🐲',
-  // Pflanzen (12)
   '🌸','🌺','🌻','🌷','🍀','🌿','🌳','🌲','🌴','🍁','🌹','🌵',
-  // Früchte (12)
   '🍎','🍊','🍋','🍌','🍉','🍇','🍓','🍒','🍑','🥝','🥥','🍍',
-  // Wetter / Natur (8)
   '☀️','🌙','⭐','🌈','⚡','🔥','❄️','🌊',
-  // Dinge (8)
   '🎈','🎁','🚀','⛵','🏰','🎵','🎨','📚',
-  // Symbole (8)
   '🌟','🎯','🔔','🎪','⚓','🎲','🎷','🎺'
 ];
+
+const KANJI = [
+  '福','寿','龍','鳳','虎','鶴','梅','蘭','竹','菊','松','桜',
+  '春','夏','秋','冬','山','川','海','雲','月','日','星','風',
+  '花','鳥','金','木','水','火','土','光','静','和','喜','楽',
+  '東','南','西','北','仁','義','礼','智','信','詩','書','画'
+];
+const KANJI_RED = new Set([0, 12, 24, 36]); // 福, 春, 花, 東 in rot
+
+const ALCH = [
+  '☉','☽','☿','♀','♂','♃','♄','♅','♆','♇','⚳','⚴',
+  '♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓',
+  '🜁','🜂','🜃','🜄','🜍','🜔','🜚','🜛','🜜','🜝','🜞','🜟',
+  '⚝','⚹','⚸','⚶','⚷','⛢','☄','✶','✷','✸','✹','✺'
+];
+
+function mandalaSvg(seed) {
+  const palette = ['#2b2519','#6a4f1f','#8a3a2c','#3e5a3a','#1f3a52','#5a3960'];
+  const ink = palette[seed % palette.length];
+  const petals = 4 + (seed % 6) * 2;
+  const innerR = 6 + (seed % 5);
+  const outerR = 22 + (seed % 6) * 2;
+  const dot = (seed % 3) === 0;
+  const ring = (seed % 4) === 0;
+  const variant = seed % 5;
+  let petalShape = '';
+  for (let i = 0; i < petals; i++) {
+    const a = (360 / petals) * i;
+    if (variant === 0)      petalShape += `<ellipse cx="0" cy="${-outerR}" rx="3.5" ry="9" fill="${ink}" transform="rotate(${a})"/>`;
+    else if (variant === 1) petalShape += `<path d="M 0 ${-outerR} L 4 ${-outerR + 11} L 0 ${-outerR + 16} L -4 ${-outerR + 11} Z" fill="${ink}" transform="rotate(${a})"/>`;
+    else if (variant === 2) petalShape += `<line x1="0" y1="${-innerR - 2}" x2="0" y2="${-outerR}" stroke="${ink}" stroke-width="2.4" stroke-linecap="round" transform="rotate(${a})"/>`;
+    else if (variant === 3) petalShape += `<circle cx="0" cy="${-outerR + 3}" r="3.2" fill="${ink}" transform="rotate(${a})"/>`;
+    else                    petalShape += `<path d="M -3 ${-innerR - 1} Q 0 ${-outerR - 1} 3 ${-innerR - 1}" fill="none" stroke="${ink}" stroke-width="2" stroke-linecap="round" transform="rotate(${a})"/>`;
+  }
+  return '<svg viewBox="-30 -30 60 60">'
+    + (ring ? `<circle cx="0" cy="0" r="${outerR + 3}" fill="none" stroke="${ink}" stroke-width="1.2" opacity="0.55"/>` : '')
+    + petalShape
+    + `<circle cx="0" cy="0" r="${innerR}" fill="none" stroke="${ink}" stroke-width="2"/>`
+    + (dot ? `<circle cx="0" cy="0" r="2.4" fill="${ink}"/>` : '')
+    + '</svg>';
+}
+
+const CONSTELLATIONS = [
+  [[-22,-8],[-12,-10],[-2,-8],[8,-4],[12,4],[2,8],[-8,4]],
+  [[-22,4],[-12,-6],[-2,2],[8,-6],[18,4]],
+  [[-16,8],[16,8],[0,-14]],
+  [[-12,-12],[12,-10],[-8,8],[10,10],[0,0]],
+  [[0,-18],[0,18],[-14,0],[14,0],[0,0]],
+  [[-18,0],[-2,-8],[14,0],[-2,8],[0,0]],
+  [[-18,-6],[-8,6],[8,8],[18,-2],[0,-12]],
+  [[-12,-14],[12,-14],[0,-2],[0,14]],
+  [[0,-16],[15,-5],[10,12],[-10,12],[-15,-5]],
+  [[-16,-10],[-4,-8],[6,-2],[10,8],[0,14]],
+  [[-20,8],[-10,-2],[0,-8],[10,-2],[20,8]],
+  [[-14,12],[-4,-10],[6,4],[16,14]],
+  [[-18,12],[-10,-8],[0,4],[10,-8],[18,12]],
+  [[-18,-8],[-2,4],[14,-12],[18,8]],
+  [[-16,-10],[14,-10],[-14,10],[16,10]],
+  [[0,-16],[14,0],[0,16],[-14,0]],
+  [[-18,0],[-8,-8],[8,-8],[18,0],[8,8],[-8,8],[0,0]],
+  [[-14,-12],[14,-12],[0,0],[-14,12],[14,12]],
+  [[-18,14],[-6,2],[6,-10],[14,-2],[10,-14]],
+  [[-20,-2],[-10,4],[2,2],[12,-4],[18,4]],
+  [[-16,8],[-8,-8],[0,4],[8,-8],[16,8],[-16,8]],
+  [[0,0],[8,-2],[10,8],[-2,12],[-12,4],[-6,-10]],
+  [[-18,8],[-8,8],[-8,-2],[4,-2],[4,-12],[16,-12]],
+  [[0,-18],[12,-2],[2,16],[-12,-2]],
+  [[-16,-16],[16,-16],[16,16],[-16,16],[-16,-16]],
+  [[-18,0],[-9,-12],[9,-12],[18,0],[9,12],[-9,12],[-18,0]],
+  [[0,-18],[6,-6],[18,-4],[10,6],[14,18],[0,11],[-14,18],[-10,6],[-18,-4],[-6,-6]],
+  [[-20,0],[-6,-2],[10,-10],[18,0],[10,10],[-6,2]],
+  [[-20,8],[-12,-4],[-4,-12],[6,-12],[14,-4],[20,8]],
+  [[-16,12],[-16,-4],[-2,-16],[14,-12],[18,2],[10,16]],
+  [[-12,-16],[-12,16],[12,16],[12,-8],[6,-16]],
+  [[-18,-16],[-18,16],[-4,16],[-4,-2],[10,-2],[10,16],[18,16]],
+  [[-14,-14],[6,-14],[-6,4],[14,4],[-6,18]],
+  [[-16,8],[-8,-4],[0,8],[8,-4],[16,8]],
+  [[-12,16],[-12,-16],[12,16],[12,-16],[12,0],[-12,0]],
+  [[-14,-14],[14,-14],[0,0],[-14,14],[14,14],[-14,-14]],
+  [[-16,-2],[-8,-12],[8,-12],[16,-2],[10,12],[-10,12],[-16,-2]],
+  [[0,-18],[5,-6],[18,-6],[8,4],[12,18],[0,10],[-12,18],[-8,4],[-18,-6],[-5,-6]],
+  [[-18,-12],[18,-12],[12,12],[-12,12],[0,-2]],
+  [[-12,-16],[-12,8],[-2,16],[10,8],[10,-16]],
+  [[0,-16],[14,-10],[16,8],[0,16],[-16,8],[-14,-10],[0,-16]],
+  [[-12,-16],[12,-16],[12,4],[6,16],[-6,16],[-12,4],[-12,-16]],
+  [[-16,8],[-8,-8],[8,-8],[16,8],[8,16],[-8,16],[-16,8]],
+  [[-16,12],[-16,-12],[0,0],[16,-12],[16,12]],
+  [[-14,-14],[-6,-14],[-6,14],[14,14],[14,-2],[6,-2]],
+  [[-14,16],[-4,-12],[6,16]],
+  [[-12,-14],[0,-14],[0,0],[12,0],[12,14],[-12,14],[-12,-14]],
+  [[-16,-14],[-8,2],[0,-12],[8,2],[16,-14],[12,16]]
+];
+
+function constellationSvg(seed) {
+  const pts = CONSTELLATIONS[seed % CONSTELLATIONS.length];
+  const ink = '#2b2519';
+  let lines = '';
+  for (let i = 0; i < pts.length - 1; i++) {
+    lines += `<line x1="${pts[i][0]}" y1="${pts[i][1]}" x2="${pts[i+1][0]}" y2="${pts[i+1][1]}" stroke="${ink}" stroke-width="0.8" opacity="0.55"/>`;
+  }
+  let dots = '';
+  for (const [x, y] of pts) {
+    dots += `<circle cx="${x}" cy="${y}" r="2.4" fill="${ink}"/>`;
+  }
+  const [ax, ay] = pts[0];
+  dots += `<circle cx="${ax}" cy="${ay}" r="3.6" fill="none" stroke="${ink}" stroke-width="0.8" opacity="0.4"/>`;
+  return `<svg viewBox="-28 -22 56 44">${lines}${dots}</svg>`;
+}
+
+const ICON_SETS = {
+  emoji:   { kind: 'text',  name: 'Emoji',       desc: 'Bunte Bilder',              items: EMOJI },
+  kanji:   { kind: 'kanji', name: 'Kanji',       desc: 'Japanische Schriftzeichen', items: KANJI, red: KANJI_RED },
+  alchemy: { kind: 'text',  name: 'Tierkreis',   desc: 'Astrologie & Alchemie',     items: ALCH },
+  mandala: { kind: 'svg',   name: 'Mandalas',    desc: 'Geometrische Muster',       count: 80, render: mandalaSvg },
+  stars:   { kind: 'svg',   name: 'Sternbilder', desc: 'Konstellationen',           count: 48, render: constellationSvg }
+};
+
+function setSize(setKey) {
+  const s = ICON_SETS[setKey] || ICON_SETS.emoji;
+  return s.kind === 'svg' ? s.count : s.items.length;
+}
+
+function renderFace(faceEl, symbolId, iconSet) {
+  const set = ICON_SETS[iconSet] || ICON_SETS.emoji;
+  faceEl.className = 'face';
+  if (set.kind === 'svg') {
+    faceEl.classList.add('svg');
+    faceEl.innerHTML = set.render(symbolId);
+  } else if (set.kind === 'kanji') {
+    faceEl.classList.add('kanji');
+    if (set.red.has(symbolId)) faceEl.classList.add('ink-red');
+    faceEl.textContent = set.items[symbolId];
+  } else {
+    faceEl.textContent = set.items[symbolId];
+  }
+}
 
 /* ---------- Spielbretter ---------- */
 function gen(cs, rs, gx0, gy0, gz) {
@@ -554,11 +710,12 @@ function generate(layoutKey) {
   const n = positions.length;
   if (n % 2 !== 0) throw new Error('Ungerade Anzahl Positionen');
   const pairs = n / 2;
-  if (pairs > SYMBOLS.length) throw new Error('Nicht genug Symbole');
+  const total = setSize(SETTINGS.iconSet);
+  if (pairs > total) throw new Error('Bildwelt hat zu wenige Motive für dieses Brett');
 
   const work = positions.map((p, i) => ({ id: i, gx: p.gx, gy: p.gy, gz: p.gz, alive: true }));
   const result = work.map(t => ({ id: t.id, gx: t.gx, gy: t.gy, gz: t.gz, symbol: null, alive: true }));
-  const symPool = shuffle(SYMBOLS.slice());
+  const symPool = shuffle(Array.from({ length: total }, (_, i) => i));
   let symIdx = 0;
 
   while (work.some(t => t.alive)) {
@@ -615,7 +772,8 @@ const DEFAULT_SETTINGS = {
   showFree: true,
   highlightFree: false,
   vibrate: false,
-  fontSize: 'm'
+  fontSize: 'm',
+  iconSet: 'emoji'
 };
 
 let SETTINGS = Object.assign({}, DEFAULT_SETTINGS, Storage.load().settings || {});
@@ -626,6 +784,7 @@ function saveGame() {
   if (!STATE) return;
   Storage.patch({ ['game_'+STATE.layout]: {
     layout: STATE.layout,
+    iconSet: STATE.iconSet,
     tiles: STATE.tiles.map(t => ({ id:t.id, gx:t.gx, gy:t.gy, gz:t.gz, symbol:t.symbol, alive:t.alive })),
     history: STATE.history,
     elapsed: STATE.elapsed,
@@ -633,7 +792,21 @@ function saveGame() {
   }});
 }
 function loadGame(layout) {
-  return Storage.load()['game_'+layout] || null;
+  const saved = Storage.load()['game_'+layout];
+  if (!saved) return null;
+  // Migration: alte Saves hatten Symbol als Emoji-String und kein iconSet-Feld
+  if (!saved.iconSet) {
+    const idxMap = new Map(EMOJI.map((s, i) => [s, i]));
+    for (const t of saved.tiles || []) {
+      if (typeof t.symbol === 'string') {
+        const i = idxMap.get(t.symbol);
+        if (i === undefined) return null; // unbekanntes Symbol → verwerfen
+        t.symbol = i;
+      }
+    }
+    saved.iconSet = 'emoji';
+  }
+  return saved;
 }
 
 /* ---------- Spielzustand ---------- */
@@ -641,6 +814,7 @@ function newGame(layout) {
   const tiles = generate(layout);
   STATE = {
     layout,
+    iconSet: SETTINGS.iconSet,
     tiles,
     selected: null,
     history: [],
@@ -653,6 +827,7 @@ function newGame(layout) {
 function continueGame(saved) {
   STATE = {
     layout: saved.layout,
+    iconSet: saved.iconSet || 'emoji',
     tiles: saved.tiles.map(t => ({ ...t })),
     selected: null,
     history: saved.history || [],
@@ -682,6 +857,7 @@ function renderAll() {
   $('#layoutLabel').textContent = L.name;
   applyTheme();
   applyFontSize();
+  applyIconSet();
   renderBoard();
   renderStatus();
   renderActionState();
@@ -746,9 +922,9 @@ function renderBoard() {
     if (!free) el.classList.add('blocked');
     if (free && SETTINGS.highlightFree) el.classList.add('free-hi');
     if (STATE.selected === t.id) el.classList.add('selected');
-    const face = document.createElement('span');
+    const face = document.createElement('div');
     face.className = 'face';
-    face.textContent = t.symbol;
+    renderFace(face, t.symbol, STATE.iconSet);
     el.appendChild(face);
     boardEl.appendChild(el);
   }
@@ -911,6 +1087,9 @@ function toggleTheme() {
 function applyFontSize() {
   $$('#settingsModal [data-size]').forEach(b => b.setAttribute('aria-pressed', b.dataset.size === SETTINGS.fontSize ? 'true' : 'false'));
 }
+function applyIconSet() {
+  $$('#settingsModal [data-iconset]').forEach(b => b.setAttribute('aria-pressed', b.dataset.iconset === SETTINGS.iconSet ? 'true' : 'false'));
+}
 function cycleZoom() {
   const order = ['s','m','l'];
   const idx = order.indexOf(SETTINGS.fontSize);
@@ -990,6 +1169,17 @@ function bindSettingsToggles() {
       renderBoard();
     });
   });
+  $$('#settingsModal [data-iconset]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prev = SETTINGS.iconSet;
+      SETTINGS.iconSet = btn.dataset.iconset;
+      saveSettings();
+      applyIconSet();
+      if (prev !== SETTINGS.iconSet) {
+        showToast('Bildwelt „' + ICON_SETS[SETTINGS.iconSet].name + '" — beim nächsten Spiel aktiv.');
+      }
+    });
+  });
 }
 
 function bindEvents() {
@@ -1057,6 +1247,7 @@ function startNewGame(layout) {
 async function init() {
   applyTheme();
   applyFontSize();
+  applyIconSet();
   bindEvents();
   bindSettingsToggles();
   const last = loadGame(SETTINGS.layout);
