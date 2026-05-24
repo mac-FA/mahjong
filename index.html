@@ -141,6 +141,9 @@
        damit das tatsächliche width/height (Klickfläche, Layout) gleich bleibt. */
     --skirt: 4px;
     --skirt-color: var(--tile-edge);
+    /* Steine sind in beiden Themes hell-beige, also fixe dunkle Tinte für
+       Text-Glyphen. Emojis ignorieren das, Kanji überschreiben es. */
+    color: #2b2519;
     background: linear-gradient(160deg, var(--tile-top) 0%, var(--tile-top) 60%, var(--tile-bot) 100%);
     border: 1px solid var(--tile-edge);
     border-radius: 7px 7px 9px 9px;
@@ -181,6 +184,14 @@
   .tile .face.kanji.ink-red { color: #b03a2e; }
   [data-theme="dark"] .tile .face.kanji        { color: #1c1812; }
   [data-theme="dark"] .tile .face.kanji.ink-red{ color: #8a2a20; }
+  /* Tierkreis-Set: monochrome Schrift erzwingen (VS15 + Symbol-Font),
+     fette Strichstärke, dunkle Tinte — sonst rendert Windows die
+     Glyphen als Farb-Emoji oder mit zu dünnen Linien. */
+  .tile .face.alch {
+    font-family: "Segoe UI Symbol", "Apple Symbols", "Noto Sans Symbols2", "Noto Sans Symbols", sans-serif;
+    font-weight: 700;
+    color: #2b2519;
+  }
   .tile .face.svg {
     width: calc(var(--tw, 48px) * 0.78);
     height: calc(var(--tw, 48px) * 0.78);
@@ -505,12 +516,15 @@ const KANJI = [
 ];
 const KANJI_RED = new Set([0, 12, 24, 36]); // 福, 春, 花, 東 in rot
 
+// Append U+FE0E (variation selector 15) an jedes Zeichen: erzwingt
+// Text-Darstellung statt Farb-Emoji-Rendering bei Tierkreis-/Symbol-
+// Glyphen, sodass CSS color durchschlägt und Dark-Mode-Kontrast passt.
 const ALCH = [
   '☉','☽','☿','♀','♂','♃','♄','♅','♆','♇','⚳','⚴',
   '♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓',
   '🜁','🜂','🜃','🜄','🜍','🜔','🜚','🜛','🜜','🜝','🜞','🜟',
   '⚝','⚹','⚸','⚶','⚷','⛢','☄','✶','✷','✸','✹','✺'
-];
+].map(c => c + '︎');
 
 function mandalaSvg(seed) {
   const palette = ['#2b2519','#6a4f1f','#8a3a2c','#3e5a3a','#1f3a52','#5a3960'];
@@ -608,7 +622,7 @@ function constellationSvg(seed) {
 const ICON_SETS = {
   emoji:   { kind: 'text',  name: 'Emoji',       desc: 'Bunte Bilder',              items: EMOJI },
   kanji:   { kind: 'kanji', name: 'Kanji',       desc: 'Japanische Schriftzeichen', items: KANJI, red: KANJI_RED },
-  alchemy: { kind: 'text',  name: 'Tierkreis',   desc: 'Astrologie & Alchemie',     items: ALCH },
+  alchemy: { kind: 'alch',  name: 'Tierkreis',   desc: 'Astrologie & Alchemie',     items: ALCH },
   mandala: { kind: 'svg',   name: 'Mandalas',    desc: 'Geometrische Muster',       count: 80, render: mandalaSvg },
   stars:   { kind: 'svg',   name: 'Sternbilder', desc: 'Konstellationen',           count: 48, render: constellationSvg }
 };
@@ -627,6 +641,9 @@ function renderFace(faceEl, symbolId, iconSet) {
   } else if (set.kind === 'kanji') {
     faceEl.classList.add('kanji');
     if (set.red.has(symbolId)) faceEl.classList.add('ink-red');
+    faceEl.textContent = set.items[symbolId];
+  } else if (set.kind === 'alch') {
+    faceEl.classList.add('alch');
     faceEl.textContent = set.items[symbolId];
   } else {
     faceEl.textContent = set.items[symbolId];
