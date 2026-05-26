@@ -348,6 +348,19 @@
     .actions button { font-size: 0.72rem; }
     .actions { gap: 4px; }
   }
+
+  /* === Vollbild =============================================== */
+  /* Der Vollbild-Button ist nur auf größeren Bildschirmen sinnvoll
+     (mobil ist die Browser-Leiste sowieso ausblendbar). */
+  .fs-only-desktop { display: none; }
+  @media (min-width: 900px) {
+    .fs-only-desktop { display: inline-flex; }
+  }
+  /* Im Vollbild rückt der Header zusammen, damit mehr Platz fürs Brett bleibt. */
+  body.is-fullscreen .app { padding: 6px 14px; gap: 8px; }
+  body.is-fullscreen header.top { padding: 0; }
+  body.is-fullscreen .title { font-size: 1rem; }
+  body.is-fullscreen .status { padding: 4px 10px; }
 </style>
 </head>
 <body>
@@ -360,6 +373,10 @@
     </button>
     <button class="icon-btn" id="themeBtn" title="Heller/Dunkler Modus" aria-label="Heller/Dunkler Modus">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    </button>
+    <button class="icon-btn fs-only-desktop" id="fsBtn" title="Vollbild" aria-label="Vollbild">
+      <svg viewBox="0 0 24 24" id="fsIconEnter"><path d="M4 9V4h5"/><path d="M20 9V4h-5"/><path d="M4 15v5h5"/><path d="M20 15v5h-5"/></svg>
+      <svg viewBox="0 0 24 24" id="fsIconExit" style="display:none;"><path d="M9 4v5H4"/><path d="M15 4v5h5"/><path d="M9 20v-5H4"/><path d="M15 20v-5h5"/></svg>
     </button>
     <button class="icon-btn" id="settingsBtn" title="Einstellungen" aria-label="Einstellungen">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -906,7 +923,8 @@ function renderBoard() {
   // groß, das umschließende .board-scale bekommt die visuell skalierte Größe,
   // damit der Flow (z. B. flex-Zentrierung) die korrekte Breite sieht.
   const availW = wrapEl.clientWidth - 28; // inneres Padding
-  const availH = Math.max(280, window.innerHeight - 280);
+  const reservedV = document.body.classList.contains('is-fullscreen') ? 180 : 280;
+  const availH = Math.max(280, window.innerHeight - reservedV);
   const scale = Math.min(1, availW / boardW, availH / boardH);
   boardEl.style.width  = boardW + 'px';
   boardEl.style.height = boardH + 'px';
@@ -1087,6 +1105,24 @@ function startTimer() {
 }
 function stopTimer() { if (timerHandle) { clearInterval(timerHandle); timerHandle = null; } }
 
+/* ---------- Vollbild ---------- */
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    (document.documentElement.requestFullscreen?.() || Promise.resolve()).catch(()=>{});
+  } else {
+    document.exitFullscreen?.();
+  }
+}
+function updateFsIcon() {
+  const inFs = !!document.fullscreenElement;
+  document.body.classList.toggle('is-fullscreen', inFs);
+  const enter = $('#fsIconEnter'), exit = $('#fsIconExit');
+  if (enter) enter.style.display = inFs ? 'none' : '';
+  if (exit)  exit.style.display  = inFs ? '' : 'none';
+  // Brett-Größe an die geänderte Verfügbarkeit anpassen
+  if (STATE) renderBoard();
+}
+
 /* ---------- Theme / Schrift ---------- */
 function applyTheme() {
   let t = SETTINGS.theme;
@@ -1216,6 +1252,8 @@ function bindEvents() {
 
   $('#newBtn').addEventListener('click', () => { buildNewGameOptions(); openModal('newModal'); });
   $('#themeBtn').addEventListener('click', toggleTheme);
+  $('#fsBtn').addEventListener('click', toggleFullscreen);
+  document.addEventListener('fullscreenchange', updateFsIcon);
   $('#settingsBtn').addEventListener('click', () => openModal('settingsModal'));
 
   $('#startBtn').addEventListener('click', () => {
